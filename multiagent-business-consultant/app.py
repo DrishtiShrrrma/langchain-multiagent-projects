@@ -10,6 +10,8 @@ from fpdf import FPDF
 import pandas as pd
 import plotly.express as px
 import PyPDF2
+from textblob import TextBlob
+import time
 
 #=================
 # Add Streamlit Components
@@ -31,13 +33,27 @@ st.title("AI Business Consultant")
 
 image_url = "https://cdn-icons-png.flaticon.com/512/1998/1998614.png"
 st.sidebar.image(image_url, caption="", use_column_width=True)
-st.sidebar.write("This AI Business Consultant uses an AI Multi-Agent system to deliver insights, statistical analysis, and up-to-date information about business topics.")
+st.sidebar.write("AI Multi-Agent system for Business Insights, Analysis, and Recommendations.")
 
-# Text Inputs
-business = st.text_input('Enter The Required Business Search Area', value="Artificial Intelligence")
+# Optional Customization Toggle
+customization_enabled = st.sidebar.checkbox("Enable Agent Goal Customization", value=False)
+
+# Default or Customizable Agent Goals
+if customization_enabled:
+    st.sidebar.markdown("### Customize Agent Goals")
+    planner_goal = st.sidebar.text_area("Planner Goal", value="Plan engaging and factually accurate content about the topic.")
+    writer_goal = st.sidebar.text_area("Writer Goal", value="Write insightful and engaging content based on the topic.")
+    analyst_goal = st.sidebar.text_area("Analyst Goal", value="Perform statistical analysis to extract actionable insights.")
+else:
+    planner_goal = "Plan engaging and factually accurate content about the topic."
+    writer_goal = "Write insightful and engaging content based on the topic."
+    analyst_goal = "Perform statistical analysis to extract actionable insights."
+
+# Multi-Topic Input
+topics = st.text_area('Enter Business Search Areas (comma-separated)', value="Artificial Intelligence, Blockchain")
 stakeholder = st.text_input('Enter The Stakeholder Team', value="Executives")
 
-# PDF Upload
+# Optional PDF Upload
 uploaded_file = st.file_uploader("Upload a PDF file for analysis (optional)", type=["pdf"])
 
 # Extract Text from PDF
@@ -63,7 +79,7 @@ llm = ChatCohere()
 
 planner = Agent(
     role="Business Consultant",
-    goal="Plan engaging and factually accurate content about the topic: {topic}",
+    goal=planner_goal,
     backstory="You're tasked with providing business insights and suggestions for the stakeholder team: {stakeholder}.",
     allow_delegation=False,
     verbose=True,
@@ -72,7 +88,7 @@ planner = Agent(
 
 writer = Agent(
     role="Business Writer",
-    goal="Write insightful and engaging content based on the topic: {topic}",
+    goal=writer_goal,
     backstory="You draft professional insights based on inputs from the Business Consultant and Data Analyst, tailored for: {stakeholder}.",
     allow_delegation=False,
     verbose=True,
@@ -81,7 +97,7 @@ writer = Agent(
 
 analyst = Agent(
     role="Data Analyst",
-    goal="Perform statistical analysis to extract actionable insights for the topic: {topic}",
+    goal=analyst_goal,
     backstory="Provide comprehensive analysis based on current trends and inputs from the Business Consultant.",
     allow_delegation=False,
     verbose=True,
@@ -93,31 +109,19 @@ analyst = Agent(
 #=================
 
 plan = Task(
-    description=(
-        "1. Research the latest trends, key players, and noteworthy news for {topic}.\n"
-        "2. Provide a structured outline and actionable insights.\n"
-        "3. Include considerations for international markets."
-    ),
+    description="Research and provide actionable business insights.",
     expected_output="A comprehensive consultancy outline with insights, analysis, and suggestions.",
     agent=planner
 )
 
 write = Task(
-    description=(
-        "1. Use the consultant's plan to write a professional document.\n"
-        "2. Ensure the document is polished, concise, and engaging for {stakeholder}.\n"
-        "3. Limit the length to 200 words with supporting visuals."
-    ),
+    description="Draft a professional business insights document.",
     expected_output="A professional document with actionable insights tailored for {stakeholder}.",
     agent=writer
 )
 
 analyse = Task(
-    description=(
-        "1. Perform statistical analysis using the consultant's plan.\n"
-        "2. Present the findings in a format useful for the Business Writer.\n"
-        "3. Collaborate to ensure alignment on the final output."
-    ),
+    description="Perform statistical analysis and present actionable findings.",
     expected_output="A clear statistical analysis report for {stakeholder}.",
     agent=analyst
 )
@@ -152,18 +156,35 @@ def generate_report(result):
     return report_path
 
 
+def analyze_sentiment(text):
+    """Perform sentiment analysis using TextBlob."""
+    blob = TextBlob(text)
+    sentiment = blob.sentiment
+    return f"Sentiment: {'Positive' if sentiment.polarity > 0 else 'Negative' if sentiment.polarity < 0 else 'Neutral'}, Polarity: {sentiment.polarity:.2f}"
+
 if st.button("Run Analysis"):
     with st.spinner('Gathering insights...'):
         try:
+            # Start timing
+            start_time = time.time()
+
             # Combine user inputs and PDF content
-            combined_content = f"Topic: {business}\nStakeholder: {stakeholder}\n\nPDF Content:\n{pdf_content}"
-            
+            combined_content = f"Topics: {topics}\nStakeholder: {stakeholder}\n\nPDF Content:\n{pdf_content}" if pdf_content else f"Topics: {topics}\nStakeholder: {stakeholder}"
+
             # Run Crew Workflow
             result = crew.kickoff(inputs={"topic": combined_content, "stakeholder": stakeholder})
             
+            # Task Execution Time
+            end_time = time.time()
+            st.success(f"Analysis completed in {end_time - start_time:.2f} seconds!")
+
             # Display Results
             st.markdown("### Insights and Analysis")
             st.write(result)
+
+            # Sentiment Analysis
+            sentiment_result = analyze_sentiment(result)
+            st.markdown(f"### Sentiment Analysis\n{sentiment_result}")
 
             # Visualization Example
             st.markdown("### Data Visualization Example")
@@ -186,4 +207,3 @@ if st.button("Run Analysis"):
 
         except Exception as e:
             st.error(f"An error occurred: {e}")
-
