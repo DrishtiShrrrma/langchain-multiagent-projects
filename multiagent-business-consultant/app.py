@@ -5,7 +5,7 @@
 import streamlit as st
 from crewai import Agent, Task, Crew
 import os
-from langchain_cohere import ChatCohere
+from langchain_groq import ChatGroq
 from fpdf import FPDF
 import pandas as pd
 import plotly.express as px
@@ -64,8 +64,7 @@ else:
 #=================
 # LLM Object and API Key
 #=================
-os.environ["COHERE_API_KEY"] = "Your_cohere_api_key_goes_here"
-llm = ChatCohere()
+llm = ChatGroq(groq_api_key=os.getenv("GROQ_API_KEY"), model_name="llama-3.2-90b-text-preview")
 
 #=================
 # Crew Agents
