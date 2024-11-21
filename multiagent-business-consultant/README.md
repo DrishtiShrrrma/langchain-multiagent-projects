@@ -1,4 +1,4 @@
-Streamlit app: https://huggingface.co/spaces/DrishtiSharma/multiagent-business-consultant
+Streamlit app: https://huggingface.co/spaces/DrishtiSharma/multi-agent-business-consultant
 
 
 
