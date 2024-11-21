@@ -149,7 +149,7 @@ analyse = Task(
 crew = Crew(
     agents=[planner, analyst, writer],
     tasks=[plan, analyse, write],
-    verbose=2
+    verbose=True
 )
 
 def generate_pdf_report(result):
